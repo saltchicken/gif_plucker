@@ -1,131 +1,149 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <title>Lazy GIF Viewer with Delete and Fullscreen</title>
-    <style>
-      body {
-        background-color: #1e1e1e; /* Custom dark grey */
-        color: #f0f0f0;
-        font-family: sans-serif;
-        margin: 0;
-        padding: 20px;
-      }
-      .gif-wrapper {
-          position: relative;
-          display: inline-block;
-          margin: 10px;
-      }
-      .gif-wrapper img {
-          max-width: 400px;
-          display: block;
-          cursor: pointer; /* Indicate clickable */
-      }
-      .delete-icon {
-          position: absolute;
-          top: 5px;
-          right: 5px;
-          background: rgba(0, 0, 0, 0.5);
-          color: white;
-          font-size: 18px;
-          padding: 4px;
-          border-radius: 4px;
-          cursor: pointer;
-          display: none;
-          user-select: none;
-      }
-      .gif-wrapper:hover .delete-icon {
-          display: block;
-      }
-    </style>
+  <meta charset="UTF-8" />
+  <title>Lazy GIF Viewer with Delete and Fullscreen</title>
+  <style>
+    body {
+      background-color: #1e1e1e;
+      color: #f0f0f0;
+      font-family: sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    .gif-wrapper {
+      position: relative;
+      display: inline-block;
+      margin: 10px;
+    }
+    .gif-wrapper img {
+      max-width: 400px;
+      display: block;
+      cursor: pointer;
+    }
+    .delete-icon {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      font-size: 18px;
+      padding: 4px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: none;
+      user-select: none;
+    }
+    .gif-wrapper:hover .delete-icon {
+      display: block;
+    }
+    .reload-button {
+      display: block;
+      margin: 30px auto 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #444;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
-    <h1>GIFs Lazy Loaded with Delete and Fullscreen</h1>
-    <div id="gif-container"></div>
+  <h1>GIFs Lazy Loaded with Delete and Fullscreen</h1>
+  <div id="gif-container"></div>
+  <button class="reload-button" onclick="reloadGIFs()">🔄 Reload</button>
 
-    <script>
-      const container = document.getElementById('gif-container');
+  <script>
+    const container = document.getElementById('gif-container');
+    const loadedGIFs = new Set();
 
-      // Toggle fullscreen function using Fullscreen API
-      function toggleFullscreen(elem) {
-        if (!document.fullscreenElement) {
-          if (elem.requestFullscreen) {
-            elem.requestFullscreen();
-          } else if (elem.webkitRequestFullscreen) { // Safari
-            elem.webkitRequestFullscreen();
-          } else if (elem.msRequestFullscreen) { // IE11
-            elem.msRequestFullscreen();
-          }
-        } else {
-          if (document.exitFullscreen) {
-            document.exitFullscreen();
-          } else if (document.webkitExitFullscreen) { // Safari
-            document.webkitExitFullscreen();
-          } else if (document.msExitFullscreen) { // IE11
-            document.msExitFullscreen();
+    function toggleFullscreen(elem) {
+      if (!document.fullscreenElement) {
+        elem.requestFullscreen?.();
+        elem.webkitRequestFullscreen?.();
+        elem.msRequestFullscreen?.();
+      } else {
+        document.exitFullscreen?.();
+        document.webkitExitFullscreen?.();
+        document.msExitFullscreen?.();
+      }
+    }
+
+    const observer = new IntersectionObserver((entries, obs) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const img = entry.target.querySelector('img');
+          if (img && img.dataset.src) {
+            img.src = img.dataset.src;
+            obs.unobserve(entry.target);
           }
         }
-      }
-
-      // Create IntersectionObserver
-      const observer = new IntersectionObserver((entries, obs) => {
-          entries.forEach(entry => {
-              if (entry.isIntersecting) {
-                  const img = entry.target.querySelector('img');
-                  if (img && img.dataset.src) {
-                      img.src = img.dataset.src;
-                      obs.unobserve(entry.target);
-                  }
-              }
-          });
-      }, {
-          rootMargin: '0px 0px 200px 0px',
-          threshold: 0.1
       });
+    }, {
+      rootMargin: '0px 0px 200px 0px',
+      threshold: 0.1
+    });
 
-      // Load GIF list
+    function createGIFElement(gif) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'gif-wrapper';
+
+      const img = document.createElement('img');
+      img.dataset.src = `/gifs/${gif}`;
+      img.alt = gif;
+      img.src = "placeholder.jpg";
+
+      img.ondblclick = (e) => {
+        e.stopPropagation();
+        toggleFullscreen(img);
+      };
+
+      const icon = document.createElement('div');
+      icon.className = 'delete-icon';
+      icon.innerHTML = '🗑️';
+      icon.title = 'Delete this GIF';
+      icon.onclick = (e) => {
+        e.stopPropagation();
+        if (confirm(`Delete "${gif}"?`)) {
+          fetch(`/delete/${encodeURIComponent(gif)}`, { method: 'DELETE' })
+            .then(res => {
+              if (res.ok) {
+                container.removeChild(wrapper);
+                loadedGIFs.delete(gif);
+              } else {
+                alert("Failed to delete.");
+              }
+            });
+        }
+      };
+
+      wrapper.appendChild(img);
+      wrapper.appendChild(icon);
+      container.appendChild(wrapper);
+      observer.observe(wrapper);
+      loadedGIFs.add(gif);
+    }
+
+    function loadGIFs() {
       fetch('/gifs')
-          .then(response => response.json())
-          .then(gifs => {
-              gifs.forEach(gif => {
-                  const wrapper = document.createElement('div');
-                  wrapper.className = 'gif-wrapper';
-
-                  const img = document.createElement('img');
-                  img.dataset.src = `/gifs/${gif}`;
-                  img.alt = gif;
-                  img.src = "placeholder.jpg";
-
-                  // Fullscreen toggle on double-click
-                  img.ondblclick = (e) => {
-                    e.stopPropagation(); // Prevent bubbling to wrapper
-                    toggleFullscreen(img);
-                  };
-
-                  const icon = document.createElement('div');
-                  icon.className = 'delete-icon';
-                  icon.innerHTML = '🗑️';
-                  icon.title = 'Delete this GIF';
-                  icon.onclick = (e) => {
-                      e.stopPropagation(); // Prevent triggering fullscreen
-                      if (confirm(`Are you sure you want to delete "${gif}"?`)) {
-                          fetch(`/delete/${encodeURIComponent(gif)}`, { method: 'DELETE' })
-                              .then(res => {
-                                  if (res.ok) {
-                                      container.removeChild(wrapper);
-                                  } else {
-                                      alert("Failed to delete.");
-                                  }
-                              });
-                      }
-                  };
-
-                  wrapper.appendChild(img);
-                  wrapper.appendChild(icon);
-                  container.appendChild(wrapper);
-                  observer.observe(wrapper);
-              });
+        .then(res => res.json())
+        .then(gifs => {
+          gifs.forEach(gif => {
+            if (!loadedGIFs.has(gif)) {
+              createGIFElement(gif);
+            }
           });
-    </script>
+        });
+    }
+
+    function reloadGIFs() {
+      loadGIFs();
+    }
+
+    // Initial load
+    loadGIFs();
+  </script>
 </body>
 </html>
