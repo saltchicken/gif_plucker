@@ -1,56 +1,57 @@
 import os
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.responses import JSONResponse
-from starlette.requests import Request
-from pathlib import Path
+
+# Configuration
+MEDIA_FOLDER = "/home/saltchicken/remote/output"
 
 app = FastAPI()
 
-GIF_FOLDER = Path('/home/saltchicken/remote/output')
-
-# Optional: allow frontend JS access (like from index.html)
+# Allow frontend to call backend (optional, but helpful in dev)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Change this to your domain in production
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.get("/", response_class=HTMLResponse)
-async def index():
-    with open("index.html", "r") as f:
-        return f.read()
+# Serve files at /media/filename
+app.mount("/media", StaticFiles(directory=MEDIA_FOLDER), name="media")
 
-@app.get("/gifs")
-async def list_gifs():
+@app.get("/")
+def index():
+    # Optional: serve HTML directly for quick testing
+    return FileResponse("index.html", media_type="text/html")
+
+@app.get("/media-list")
+def list_media():
     try:
-        files = [f.name for f in GIF_FOLDER.iterdir() if f.suffix.lower() == ".gif"]
-        return JSONResponse(files)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="GIF folder not found")
+        files = [
+            f for f in os.listdir(MEDIA_FOLDER)
+            if f.lower().endswith((".gif", ".mp4"))
+        ]
+        files.sort(key=str.lower)
+        return files
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/gifs/{filename:path}")
-async def get_gif(filename: str):
-    gif_path = GIF_FOLDER / filename
-    if gif_path.exists() and gif_path.suffix.lower() == ".gif":
-        return FileResponse(gif_path)
-    raise HTTPException(status_code=404, detail="GIF not found")
-
-@app.delete("/delete/{filename:path}")
-async def delete_gif(filename: str):
-    safe_path = os.path.normpath(os.path.join(GIF_FOLDER, filename))
-    if not safe_path.startswith(str(GIF_FOLDER.resolve())):
+@app.delete("/delete/{filename}")
+def delete_file(filename: str):
+    safe_path = os.path.normpath(os.path.join(MEDIA_FOLDER, filename))
+    if not safe_path.startswith(os.path.abspath(MEDIA_FOLDER)):
         raise HTTPException(status_code=400, detail="Invalid file path")
+
     try:
         os.remove(safe_path)
-        try:
-            os.remove(safe_path.replace('.gif', '.png'))
-        except FileNotFoundError:
-            pass
-        return "", 204
+        # Optional: try to delete .png preview if it's a .gif
+        if filename.lower().endswith(".gif"):
+            try:
+                os.remove(safe_path.replace(".gif", ".png"))
+            except FileNotFoundError:
+                pass
+        return {"message": f"{filename} deleted"}
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="File not found")
     except Exception as e:

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Lazy GIF Viewer with Delete and Fullscreen</title>
+  <title>Lazy Media Viewer (GIF & MP4)</title>
   <style>
     body {
       background-color: #1e1e1e;
@@ -16,7 +16,8 @@
       display: inline-block;
       margin: 10px;
     }
-    .gif-wrapper img {
+    .gif-wrapper img,
+    .gif-wrapper video {
       max-width: 400px;
       display: block;
       cursor: pointer;
@@ -51,13 +52,13 @@
   </style>
 </head>
 <body>
-  <h1>GIFs Lazy Loaded with Delete and Fullscreen</h1>
+  <h1>Lazy Media Viewer (GIFs & MP4s)</h1>
   <div id="gif-container"></div>
-  <button class="reload-button" onclick="reloadGIFs()">🔄 Reload</button>
+  <button class="reload-button" onclick="reloadMedia()">🔄 Reload</button>
 
   <script>
     const container = document.getElementById('gif-container');
-    const loadedGIFs = new Set();
+    const loadedMedia = new Set();
 
     function toggleFullscreen(elem) {
       if (!document.fullscreenElement) {
@@ -74,9 +75,9 @@
     const observer = new IntersectionObserver((entries, obs) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
-          const img = entry.target.querySelector('img');
-          if (img && img.dataset.src) {
-            img.src = img.dataset.src;
+          const media = entry.target.querySelector('img, video');
+          if (media && media.dataset.src) {
+            media.src = media.dataset.src;
             obs.unobserve(entry.target);
           }
         }
@@ -86,32 +87,46 @@
       threshold: 0.1
     });
 
-    function createGIFElement(gif) {
+    function createMediaElement(file) {
       const wrapper = document.createElement('div');
       wrapper.className = 'gif-wrapper';
 
-      const img = document.createElement('img');
-      img.dataset.src = `/gifs/${gif}`;
-      img.alt = gif;
-      img.src = "placeholder.jpg";
+      const ext = file.split('.').pop().toLowerCase();
+      let media;
 
-      img.ondblclick = (e) => {
+      if (ext === 'mp4') {
+        media = document.createElement('video');
+        media.controls = true;
+        media.autoplay = true;
+        media.muted = true;
+        media.loop = true;
+        media.width = 400;
+        media.dataset.src = `/media/${file}`;
+        media.poster = "placeholder.jpg";
+      } else {
+        media = document.createElement('img');
+        media.dataset.src = `/media/${file}`;
+        media.src = "placeholder.jpg";
+      }
+
+      media.alt = file;
+      media.ondblclick = (e) => {
         e.stopPropagation();
-        toggleFullscreen(img);
+        toggleFullscreen(media);
       };
 
       const icon = document.createElement('div');
       icon.className = 'delete-icon';
       icon.innerHTML = '🗑️';
-      icon.title = 'Delete this GIF';
+      icon.title = 'Delete this file';
       icon.onclick = (e) => {
         e.stopPropagation();
-        if (confirm(`Delete "${gif}"?`)) {
-          fetch(`/delete/${encodeURIComponent(gif)}`, { method: 'DELETE' })
+        if (confirm(`Delete "${file}"?`)) {
+          fetch(`/delete/${encodeURIComponent(file)}`, { method: 'DELETE' })
             .then(res => {
               if (res.ok) {
                 container.removeChild(wrapper);
-                loadedGIFs.delete(gif);
+                loadedMedia.delete(file);
               } else {
                 alert("Failed to delete.");
               }
@@ -119,31 +134,33 @@
         }
       };
 
-      wrapper.appendChild(img);
+      wrapper.appendChild(media);
       wrapper.appendChild(icon);
       container.appendChild(wrapper);
       observer.observe(wrapper);
-      loadedGIFs.add(gif);
+      loadedMedia.add(file);
     }
 
-    function loadGIFs() {
-      fetch('/gifs')
+    function loadMedia() {
+      fetch('/media-list')
         .then(res => res.json())
-        .then(gifs => {
-          gifs.forEach(gif => {
-            if (!loadedGIFs.has(gif)) {
-              createGIFElement(gif);
-            }
-          });
+        .then(files => {
+          files
+            .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }))
+            .forEach(file => {
+              if (!loadedMedia.has(file)) {
+                createMediaElement(file);
+              }
+            });
         });
     }
 
-    function reloadGIFs() {
-      loadGIFs();
+    function reloadMedia() {
+      loadMedia();
     }
 
     // Initial load
-    loadGIFs();
+    loadMedia();
   </script>
 </body>
 </html>
