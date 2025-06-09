@@ -1,42 +1,49 @@
-import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-
-# Configuration
-MEDIA_FOLDER = "/home/saltchicken/remote/output"
+import os
 
 app = FastAPI()
 
-# Allow frontend to call backend (optional, but helpful in dev)
+# Directory that contains your media files
+MEDIA_FOLDER = "/home/saltchicken/remote/output"
+
+# Enable CORS for frontend development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Change this to your domain in production
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Serve files at /media/filename
+# Serve the media files at /media/*
 app.mount("/media", StaticFiles(directory=MEDIA_FOLDER), name="media")
 
+# Serve the frontend
 @app.get("/")
-def index():
-    # Optional: serve HTML directly for quick testing
-    return FileResponse("index.html", media_type="text/html")
+def serve_index():
+    return FileResponse("index.html")
 
+# Endpoint to return a paginated list of .gif and .mp4 files
 @app.get("/media-list")
-def list_media():
+def media_list(offset: int = Query(0), limit: int = Query(20)):
     try:
         files = [
             f for f in os.listdir(MEDIA_FOLDER)
             if f.lower().endswith((".gif", ".mp4"))
         ]
-        files.sort(key=str.lower)
-        return files
+        files.sort(key=lambda x: x.lower())  # sort alphabetically
+        total = len(files)
+        items = files[offset:offset+limit]
+        return {
+            "total": total,
+            "items": items
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# Endpoint to delete a file (also deletes .png if it's a .gif)
 @app.delete("/delete/{filename}")
 def delete_file(filename: str):
     safe_path = os.path.normpath(os.path.join(MEDIA_FOLDER, filename))
@@ -45,7 +52,7 @@ def delete_file(filename: str):
 
     try:
         os.remove(safe_path)
-        # Optional: try to delete .png preview if it's a .gif
+        # Also try to remove corresponding .png for .gif files
         if filename.lower().endswith(".gif"):
             try:
                 os.remove(safe_path.replace(".gif", ".png"))

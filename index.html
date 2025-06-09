@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Lazy Media Viewer (GIF & MP4)</title>
+  <title>Lazy Media Viewer (Paginated)</title>
   <style>
     body {
       background-color: #1e1e1e;
@@ -38,39 +38,44 @@
     .gif-wrapper:hover .delete-icon {
       display: block;
     }
-    .reload-button {
-      display: block;
-      margin: 30px auto 10px;
+    .controls {
+      margin: 30px auto;
+      text-align: center;
+    }
+    .controls button {
       padding: 10px 20px;
       font-size: 16px;
+      margin: 0 5px;
       background: #444;
       color: white;
       border: none;
       border-radius: 6px;
       cursor: pointer;
     }
+    .page-info {
+      margin: 10px;
+      font-size: 16px;
+    }
   </style>
 </head>
 <body>
   <h1>Lazy Media Viewer (GIFs & MP4s)</h1>
   <div id="gif-container"></div>
-  <button class="reload-button" onclick="reloadMedia()">🔄 Reload</button>
+  <div class="controls">
+    <button onclick="firstPage()">⏮ First</button>
+    <button onclick="prevPage()">⬅ Prev</button>
+    <span class="page-info" id="page-info">Page 1</span>
+    <button onclick="nextPage()">Next ➡</button>
+    <button onclick="lastPage()">Last ⏭</button>
+  </div>
 
   <script>
     const container = document.getElementById('gif-container');
-    const loadedMedia = new Set();
-
-    function toggleFullscreen(elem) {
-      if (!document.fullscreenElement) {
-        elem.requestFullscreen?.();
-        elem.webkitRequestFullscreen?.();
-        elem.msRequestFullscreen?.();
-      } else {
-        document.exitFullscreen?.();
-        document.webkitExitFullscreen?.();
-        document.msExitFullscreen?.();
-      }
-    }
+    const pageInfo = document.getElementById('page-info');
+    const pageSize = 12;
+    let currentPage = 0;
+    let totalItems = 0;
+    let totalPages = 1;
 
     const observer = new IntersectionObserver((entries, obs) => {
       entries.forEach(entry => {
@@ -87,6 +92,30 @@
       threshold: 0.1
     });
 
+    function getPageFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const p = parseInt(params.get("page"));
+      return isNaN(p) || p < 1 ? 1 : p;
+    }
+
+    function updateUrl(page) {
+      const url = new URL(window.location);
+      url.searchParams.set("page", page);
+      window.history.pushState({}, "", url);
+    }
+
+    function toggleFullscreen(elem) {
+      if (!document.fullscreenElement) {
+        elem.requestFullscreen?.();
+      } else {
+        document.exitFullscreen?.();
+      }
+    }
+
+    function clearContainer() {
+      container.innerHTML = '';
+    }
+
     function createMediaElement(file) {
       const wrapper = document.createElement('div');
       wrapper.className = 'gif-wrapper';
@@ -96,7 +125,7 @@
 
       if (ext === 'mp4') {
         media = document.createElement('video');
-        media.controls = true;
+        // media.controls = true;
         media.autoplay = true;
         media.muted = true;
         media.loop = true;
@@ -125,8 +154,7 @@
           fetch(`/delete/${encodeURIComponent(file)}`, { method: 'DELETE' })
             .then(res => {
               if (res.ok) {
-                container.removeChild(wrapper);
-                loadedMedia.delete(file);
+                wrapper.remove();
               } else {
                 alert("Failed to delete.");
               }
@@ -138,29 +166,43 @@
       wrapper.appendChild(icon);
       container.appendChild(wrapper);
       observer.observe(wrapper);
-      loadedMedia.add(file);
     }
 
-    function loadMedia() {
-      fetch('/media-list')
+    function loadPage(displayPageNumber) {
+      const zeroIndexedPage = displayPageNumber - 1;
+      fetch(`/media-list?offset=${zeroIndexedPage * pageSize}&limit=${pageSize}`)
         .then(res => res.json())
-        .then(files => {
-          files
-            .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }))
-            .forEach(file => {
-              if (!loadedMedia.has(file)) {
-                createMediaElement(file);
-              }
-            });
+        .then(data => {
+          totalItems = data.total;
+          totalPages = Math.ceil(totalItems / pageSize);
+          currentPage = Math.max(1, Math.min(displayPageNumber, totalPages));
+          updateUrl(currentPage);
+          pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+          clearContainer();
+          data.items.forEach(file => createMediaElement(file));
         });
     }
 
-    function reloadMedia() {
-      loadMedia();
+    function nextPage() {
+      if (currentPage < totalPages) loadPage(currentPage + 1);
     }
 
-    // Initial load
-    loadMedia();
+    function prevPage() {
+      if (currentPage > 1) loadPage(currentPage - 1);
+    }
+
+    function firstPage() {
+      loadPage(1);
+    }
+
+    function lastPage() {
+      loadPage(totalPages);
+    }
+
+    window.onload = () => {
+      const startPage = getPageFromUrl();
+      loadPage(startPage);
+    };
   </script>
 </body>
 </html>
