@@ -1,38 +1,57 @@
 import os
-from flask import Flask, send_from_directory, jsonify, abort
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.responses import JSONResponse
+from starlette.requests import Request
+from pathlib import Path
 
-app = Flask(__name__)
-GIF_FOLDER = '/gifs'
+app = FastAPI()
 
-@app.route('/')
-def index():
-    return open('index.html').read()
+GIF_FOLDER = Path('/home/saltchicken/remote/output')
 
-@app.route('/gifs')
-def list_gifs():
-    files = [f for f in os.listdir(GIF_FOLDER) if f.lower().endswith('.gif')]
-    return jsonify(files)
+# Optional: allow frontend JS access (like from index.html)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.route('/gifs/<path:filename>')
-def get_gif(filename):
-    return send_from_directory(GIF_FOLDER, filename)
+@app.get("/", response_class=HTMLResponse)
+async def index():
+    with open("index.html", "r") as f:
+        return f.read()
 
-@app.route('/delete/<path:filename>', methods=['DELETE'])
-def delete_gif(filename):
+@app.get("/gifs")
+async def list_gifs():
+    try:
+        files = [f.name for f in GIF_FOLDER.iterdir() if f.suffix.lower() == ".gif"]
+        return JSONResponse(files)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="GIF folder not found")
+
+@app.get("/gifs/{filename:path}")
+async def get_gif(filename: str):
+    gif_path = GIF_FOLDER / filename
+    if gif_path.exists() and gif_path.suffix.lower() == ".gif":
+        return FileResponse(gif_path)
+    raise HTTPException(status_code=404, detail="GIF not found")
+
+@app.delete("/delete/{filename:path}")
+async def delete_gif(filename: str):
     safe_path = os.path.normpath(os.path.join(GIF_FOLDER, filename))
-    print(safe_path)
-    print(os.path.abspath(GIF_FOLDER))
-    if not safe_path.startswith(os.path.abspath(GIF_FOLDER)):
-        print("TRhis is bad")
-        abort(400, "Invalid file path")
+    if not safe_path.startswith(str(GIF_FOLDER.resolve())):
+        raise HTTPException(status_code=400, detail="Invalid file path")
     try:
         os.remove(safe_path)
-        os.remove(safe_path.replace('.gif', '.png'))
-        return '', 204
+        try:
+            os.remove(safe_path.replace('.gif', '.png'))
+        except FileNotFoundError:
+            pass
+        return "", 204
     except FileNotFoundError:
-        return abort(404, "File not found")
+        raise HTTPException(status_code=404, detail="File not found")
     except Exception as e:
-        return abort(500, f"Error deleting file: {e}")
-
-if __name__ == '__main__':
-    app.run(debug=True)
+        raise HTTPException(status_code=500, detail=f"Error deleting file: {e}")
