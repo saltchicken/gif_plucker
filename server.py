@@ -38,7 +38,9 @@ def serve_index():
 def media_list(offset: int = Query(0), limit: int = Query(20)):
     try:
         files = [
-            f for f in os.listdir(MEDIA_FOLDER) if f.lower().endswith((".gif", ".mp4"))
+            f
+            for f in os.listdir(MEDIA_FOLDER)
+            if f.lower().endswith((".gif", ".mp4", ".png"))
         ]
         files.sort(key=lambda x: x.lower())  # sort alphabetically
         total = len(files)
@@ -61,6 +63,11 @@ def delete_file(filename: str):
         if filename.lower().endswith(".gif"):
             try:
                 os.remove(safe_path.replace(".gif", ".png"))
+            except FileNotFoundError:
+                pass
+        if filename.lower().endswith(".png"):
+            try:
+                os.remove(safe_path)
             except FileNotFoundError:
                 pass
         return {"message": f"{filename} deleted"}

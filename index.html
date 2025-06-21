@@ -120,23 +120,25 @@
       const wrapper = document.createElement('div');
       wrapper.className = 'gif-wrapper';
 
-      const ext = file.split('.').pop().toLowerCase();
-      let media;
+    const ext = file.split('.').pop().toLowerCase();
+    let media;
 
-      if (ext === 'mp4') {
-        media = document.createElement('video');
-        // media.controls = true;
-        media.autoplay = true;
-        media.muted = true;
-        media.loop = true;
-        media.width = 400;
-        media.dataset.src = `/media/${file}`;
-        media.poster = "placeholder.jpg";
-      } else {
-        media = document.createElement('img');
-        media.dataset.src = `/media/${file}`;
-        media.src = "placeholder.jpg";
-      }
+    if (ext === 'mp4') {
+      media = document.createElement('video');
+      media.autoplay = true;
+      media.muted = true;
+      media.loop = true;
+      media.width = 400;
+      media.dataset.src = `/media/${file}`;
+      media.poster = "placeholder.jpg";
+    } else if (['png', 'gif', 'jpg', 'jpeg', 'webp'].includes(ext)) {
+      media = document.createElement('img');
+      media.dataset.src = `/media/${file}`;
+      media.src = "placeholder.jpg";
+    } else {
+      console.warn(`Unsupported file type: ${file}`);
+      return;
+    }
 
       media.alt = file;
       media.ondblclick = (e) => {
