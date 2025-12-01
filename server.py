@@ -7,7 +7,7 @@ from dotenv import load_dotenv, find_dotenv
 
 app = FastAPI()
 
-# ‼️ UPDATED: Changed default path to ComfyUI output directory and expanded user (~)
+
 MEDIA_FOLDER = os.path.expanduser("~/.local/share/ComfyUI/output")
 dotenv_path = find_dotenv()
 if dotenv_path:
@@ -34,34 +34,55 @@ def serve_index():
     return FileResponse("index.html")
 
 
-# Endpoint to return a paginated list of .gif and .mp4 files
-@app.get("/media-list")
-def media_list(offset: int = Query(0), limit: int = Query(20)):
-    try:
-        # ‼️ UPDATED: Recursive file search using os.walk to include subdirectories
-        files = []
-        for root, _, filenames in os.walk(MEDIA_FOLDER):
-            for filename in filenames:
-                if filename.lower().endswith((".gif", ".mp4", ".png")):
-                    # Create relative path from the base MEDIA_FOLDER
-                    full_path = os.path.join(root, filename)
-                    rel_path = os.path.relpath(full_path, MEDIA_FOLDER)
-                    files.append(rel_path)
 
-        files.sort(key=lambda x: x.lower())  # sort alphabetically
-        total = len(files)
-        items = files[offset : offset + limit]
-        return {"total": total, "items": items}
+@app.get("/media-list")
+def media_list(
+    subdir: str = Query("", description="Subdirectory to list"),
+    offset: int = Query(0),
+    limit: int = Query(20),
+):
+
+    base_dir = os.path.abspath(MEDIA_FOLDER)
+    target_dir = os.path.abspath(os.path.join(base_dir, subdir))
+
+    if not target_dir.startswith(base_dir):
+        raise HTTPException(status_code=400, detail="Invalid path")
+
+    if not os.path.exists(target_dir):
+        raise HTTPException(status_code=404, detail="Directory not found")
+
+    try:
+        items = []
+
+
+        with os.scandir(target_dir) as entries:
+            for entry in entries:
+
+                if entry.is_dir():
+                    # Calculate relative path for navigation
+                    rel_path = os.path.relpath(entry.path, MEDIA_FOLDER)
+                    items.append({"type": "dir", "name": entry.name, "path": rel_path})
+                elif entry.is_file() and entry.name.lower().endswith(
+                    (".gif", ".mp4", ".png", ".jpg", ".jpeg", ".webp")
+                ):
+                    rel_path = os.path.relpath(entry.path, MEDIA_FOLDER)
+                    items.append({"type": "file", "name": entry.name, "path": rel_path})
+
+
+        items.sort(key=lambda x: (x["type"] != "dir", x["name"].lower()))
+
+        total = len(items)
+        paginated_items = items[offset : offset + limit]
+
+        return {"total": total, "items": paginated_items, "current_path": subdir}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ‼️ UPDATED: Changed to Query parameter to handle paths with slashes safely
 @app.delete("/delete")
 def delete_file(
     filename: str = Query(..., description="Relative path of file to delete"),
 ):
-    # ‼️ UPDATED: Safe path calculation now handles the relative paths from subdirs
     safe_path = os.path.normpath(os.path.join(MEDIA_FOLDER, filename))
 
     # Security check: ensure path is still inside MEDIA_FOLDER
@@ -73,7 +94,7 @@ def delete_file(
             os.remove(safe_path)
 
         # Also try to remove corresponding .png for .gif files
-        # ‼️ UPDATED: Logic to handle cleanup of paired files in subdirectories
+
         if filename.lower().endswith(".gif"):
             png_path = safe_path.replace(".gif", ".png")
             if os.path.exists(png_path):
