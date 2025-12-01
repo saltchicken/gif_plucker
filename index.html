@@ -1,34 +1,34 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Output Plucker</title>
-  <style>
-    body {
-      background-color: #1e1e1e;
-      color: #f0f0f0;
-      font-family: sans-serif;
-      margin: 0;
-      padding: 20px;
-    }
-    .gif-wrapper {
-      position: relative;
-      display: inline-block;
-      margin: 10px;
-      vertical-align: top;
-      width: 400px; 
-      min-height: 200px;
-      background: #2a2a2a;
-      border-radius: 8px;
-    }
-    .gif-wrapper img,
-    .gif-wrapper video {
-      max-width: 100%;
-      display: block;
-      cursor: pointer;
-      border-radius: 8px;
-    }
-    .folder-content {
+  <head>
+    <meta charset="UTF-8" />
+    <title>Output Plucker</title>
+    <style>
+      body {
+        background-color: #1e1e1e;
+        color: #f0f0f0;
+        font-family: sans-serif;
+        margin: 0;
+        padding: 20px;
+      }
+      .gif-wrapper {
+        position: relative;
+        display: inline-block;
+        margin: 10px;
+        vertical-align: top;
+        width: 400px;
+        min-height: 200px;
+        background: #2a2a2a;
+        border-radius: 8px;
+      }
+      .gif-wrapper img,
+      .gif-wrapper video {
+        max-width: 100%;
+        display: block;
+        cursor: pointer;
+        border-radius: 8px;
+      }
+      .folder-content {
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -36,54 +36,53 @@
         height: 200px;
         cursor: pointer;
         color: #ffcc00;
-    }
-    .folder-icon-svg {
+      }
+      .folder-icon-svg {
         font-size: 80px;
-    }
-    
-    .delete-icon {
-      position: absolute;
-      top: 5px;
-      right: 5px;
-      background: rgba(0, 0, 0, 0.5);
-      color: white;
-      font-size: 18px;
-      padding: 4px;
-      border-radius: 4px;
-      cursor: pointer;
-      display: none;
-      user-select: none;
-      z-index: 10;
-    }
-    .gif-wrapper:hover .delete-icon {
-      display: block;
-    }
+      }
 
+      .delete-icon {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        font-size: 18px;
+        padding: 4px;
+        border-radius: 4px;
+        cursor: pointer;
+        display: none;
+        user-select: none;
+        z-index: 10;
+      }
+      .gif-wrapper:hover .delete-icon {
+        display: block;
+      }
 
-    .save-icon {
-      position: absolute;
-      top: 5px;
-      left: 5px;
-      background: rgba(0, 0, 0, 0.5);
-      color: #4CAF50; /* Greenish */
-      font-size: 18px;
-      padding: 4px;
-      border-radius: 4px;
-      cursor: pointer;
-      display: none;
-      user-select: none;
-      z-index: 10;
-    }
-    .gif-wrapper:hover .save-icon {
-      display: block;
-    }
+      .save-icon {
+        position: absolute;
+        top: 5px;
+        left: 5px;
+        background: rgba(0, 0, 0, 0.5);
+        color: #4caf50; /* Greenish */
+        font-size: 18px;
+        padding: 4px;
+        border-radius: 4px;
+        cursor: pointer;
+        display: none;
+        user-select: none;
+        z-index: 10;
+      }
+      .gif-wrapper:hover .save-icon {
+        display: block;
+      }
 
-    .file-label {
+      .file-label {
         position: absolute;
         bottom: 0;
         left: 0;
         right: 0;
-        background: rgba(0,0,0,0.7);
+        background: rgba(0, 0, 0, 0.7);
         color: #fff;
         font-size: 12px;
         padding: 4px;
@@ -95,140 +94,140 @@
         pointer-events: none;
         border-bottom-left-radius: 8px;
         border-bottom-right-radius: 8px;
-    }
-    .gif-wrapper:hover .file-label, .folder-type .file-label {
+      }
+      .gif-wrapper:hover .file-label,
+      .folder-type .file-label {
         opacity: 1;
-    }
+      }
 
-    .controls, .nav-bar {
-      margin: 20px auto;
-      text-align: center;
-    }
-    .controls button, .nav-bar button {
-      padding: 10px 20px;
-      font-size: 16px;
-      margin: 0 5px;
-      background: #444;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    .controls button:disabled, .nav-bar button:disabled {
+      .controls,
+      .nav-bar {
+        margin: 20px auto;
+        text-align: center;
+      }
+      .controls button,
+      .nav-bar button {
+        padding: 10px 20px;
+        font-size: 16px;
+        margin: 0 5px;
+        background: #444;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      .controls button:disabled,
+      .nav-bar button:disabled {
         opacity: 0.5;
         cursor: default;
-    }
-    .page-info, .path-info {
-      margin: 10px;
-      font-size: 16px;
-    }
-    .path-info {
+      }
+      .page-info,
+      .path-info {
+        margin: 10px;
+        font-size: 16px;
+      }
+      .path-info {
         color: #88ccff;
         font-family: monospace;
-    }
-  </style>
-</head>
-<body>
-  
-  <div class="nav-bar">
-    <button onclick="navigateUp()" id="up-btn">⬆ Up</button>
-    <span class="path-info" id="current-path-display">/</span>
-  </div>
-
-  <div class="controls">
-    <button onclick="firstPage()">⏮ First</button>
-    <button onclick="prevPage()">⬅ Prev</button>
-    <span class="page-info" id="page-info">Page 1</span>
-    <button onclick="nextPage()">Next ➡</button>
-    <button onclick="lastPage()">Last ⏭</button>
-  </div>
-
-  <div id="gif-container"></div>
-
-  <script>
-    const container = document.getElementById('gif-container');
-    const pageInfo = document.getElementById('page-info');
-    
-
-    const pathDisplay = document.getElementById('current-path-display');
-    const upBtn = document.getElementById('up-btn');
-    
-    const pageSize = 12;
-    let currentPage = 0;
-    let totalItems = 0;
-    let totalPages = 1;
-    
-
-    let currentPath = "";
-
-    const observer = new IntersectionObserver((entries, obs) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const media = entry.target.querySelector('img, video');
-          if (media && media.dataset.src) {
-            media.src = media.dataset.src;
-            obs.unobserve(entry.target);
-          }
-        }
-      });
-    }, {
-      rootMargin: '0px 0px 200px 0px',
-      threshold: 0.1
-    });
-
-
-    // keeping it simple for now as folder navigation complicates permalinks.
-    
-    function toggleFullscreen(elem) {
-      if (!document.fullscreenElement) {
-        elem.requestFullscreen?.();
-      } else {
-        document.exitFullscreen?.();
       }
-    }
+    </style>
+  </head>
+  <body>
+    <div class="nav-bar">
+      <button onclick="navigateUp()" id="up-btn">⬆ Up</button>
+      <span class="path-info" id="current-path-display">/</span>
+    </div>
 
-    function clearContainer() {
-      container.innerHTML = '';
-    }
+    <div class="controls">
+      <button onclick="firstPage()">⏮ First</button>
+      <button onclick="prevPage()">⬅ Prev</button>
+      <span class="page-info" id="page-info">Page 1</span>
+      <button onclick="nextPage()">Next ➡</button>
+      <button onclick="lastPage()">Last ⏭</button>
+    </div>
 
+    <div id="gif-container"></div>
 
-    function createGridItem(item) {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'gif-wrapper';
+    <script>
+      const container = document.getElementById("gif-container");
+      const pageInfo = document.getElementById("page-info");
 
+      const pathDisplay = document.getElementById("current-path-display");
+      const upBtn = document.getElementById("up-btn");
 
-      if (item.type === 'dir') {
-          wrapper.classList.add('folder-type');
-          
-          const folderContent = document.createElement('div');
-          folderContent.className = 'folder-content';
+      const pageSize = 12;
+      let currentPage = 0;
+      let totalItems = 0;
+      let totalPages = 1;
+
+      let currentPath = "";
+
+      const observer = new IntersectionObserver(
+        (entries, obs) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              const media = entry.target.querySelector("img, video");
+              if (media && media.dataset.src) {
+                media.src = media.dataset.src;
+                obs.unobserve(entry.target);
+              }
+            }
+          });
+        },
+        {
+          rootMargin: "0px 0px 200px 0px",
+          threshold: 0.1,
+        },
+      );
+
+      // keeping it simple for now as folder navigation complicates permalinks.
+
+      function toggleFullscreen(elem) {
+        if (!document.fullscreenElement) {
+          elem.requestFullscreen?.();
+        } else {
+          document.exitFullscreen?.();
+        }
+      }
+
+      function clearContainer() {
+        container.innerHTML = "";
+      }
+
+      function createGridItem(item) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "gif-wrapper";
+
+        if (item.type === "dir") {
+          wrapper.classList.add("folder-type");
+
+          const folderContent = document.createElement("div");
+          folderContent.className = "folder-content";
           folderContent.innerHTML = '<div class="folder-icon-svg">📁</div>';
-          
+
           // Click to navigate
           folderContent.onclick = () => {
-              openFolder(item.path);
+            openFolder(item.path);
           };
 
           wrapper.appendChild(folderContent);
-          
-      } else {
-
+        } else {
           const file = item.path; // Use the path provided by API
-          const ext = file.split('.').pop().toLowerCase();
+          const ext = file.split(".").pop().toLowerCase();
           let media;
 
-          if (ext === 'mp4') {
-            media = document.createElement('video');
+          if (ext === "mp4") {
+            media = document.createElement("video");
             media.autoplay = true;
             media.muted = true;
             media.loop = true;
             media.width = 400;
             media.dataset.src = `/media/${file}`;
-            media.poster = "placeholder.jpg"; 
+            media.poster = "placeholder.jpg";
           } else {
-            media = document.createElement('img');
+            media = document.createElement("img");
             media.dataset.src = `/media/${file}`;
-            media.src = "placeholder.jpg"; 
+            media.src = "placeholder.jpg";
           }
 
           media.alt = item.name;
@@ -236,137 +235,140 @@
             e.stopPropagation();
             toggleFullscreen(media);
           };
-          
+
           wrapper.appendChild(media);
-          
+
           // Delete icon (only for files)
-          const icon = document.createElement('div');
-          icon.className = 'delete-icon';
-          icon.innerHTML = '🗑️';
-          icon.title = 'Delete this file';
+          const icon = document.createElement("div");
+          icon.className = "delete-icon";
+          icon.innerHTML = "🗑️";
+          icon.title = "Delete this file";
           icon.onclick = (e) => {
             e.stopPropagation();
             if (confirm(`Delete "${item.name}"?`)) {
-              fetch(`/delete?filename=${encodeURIComponent(item.path)}`, { method: 'DELETE' })
-                .then(res => {
-                  if (res.ok) {
-                    wrapper.remove();
-                  } else {
-                    alert("Failed to delete.");
-                  }
-                });
+              fetch(`/delete?filename=${encodeURIComponent(item.path)}`, {
+                method: "DELETE",
+              }).then((res) => {
+                if (res.ok) {
+                  wrapper.remove();
+                } else {
+                  alert("Failed to delete.");
+                }
+              });
             }
           };
           wrapper.appendChild(icon);
 
-
-          const saveIcon = document.createElement('div');
-          saveIcon.className = 'save-icon';
-          saveIcon.innerHTML = '💾';
-          saveIcon.title = 'Save to Saved folder';
+          const saveIcon = document.createElement("div");
+          saveIcon.className = "save-icon";
+          saveIcon.innerHTML = "💾";
+          saveIcon.title = "Save to Saved folder";
           saveIcon.onclick = (e) => {
             e.stopPropagation();
             // Simple visual feedback state
             const originalText = saveIcon.innerHTML;
-            saveIcon.innerHTML = '⏳';
-            
-            fetch(`/save?filename=${encodeURIComponent(item.path)}`, { method: 'POST' })
-                .then(res => {
-                    if (res.ok) {
-                        saveIcon.innerHTML = '✅'; // Success checkmark
-                        setTimeout(() => saveIcon.innerHTML = '💾', 1500); // Reset after 1.5s
-                    } else {
-                        saveIcon.innerHTML = '❌';
-                        console.error('Save failed');
-                    }
-                })
-                .catch(err => {
-                    saveIcon.innerHTML = '❌';
-                    console.error(err);
-                });
+            saveIcon.innerHTML = "⏳";
+
+            fetch(`/save?filename=${encodeURIComponent(item.path)}`, {
+              method: "POST",
+            })
+              .then((res) => {
+                if (res.ok) {
+                  saveIcon.innerHTML = "✅"; // Success checkmark
+                  setTimeout(() => (saveIcon.innerHTML = "💾"), 1500); // Reset after 1.5s
+                } else {
+                  saveIcon.innerHTML = "❌";
+                  console.error("Save failed");
+                }
+              })
+              .catch((err) => {
+                saveIcon.innerHTML = "❌";
+                console.error(err);
+              });
           };
           wrapper.appendChild(saveIcon);
 
           observer.observe(wrapper);
+        }
+
+        // Label (Shared)
+        const label = document.createElement("div");
+        label.className = "file-label";
+        label.textContent = item.name; // Display just name, not full path
+        wrapper.appendChild(label);
+
+        container.appendChild(wrapper);
       }
 
-      // Label (Shared)
-      const label = document.createElement('div');
-      label.className = 'file-label';
-      label.textContent = item.name; // Display just name, not full path
-      wrapper.appendChild(label);
-
-      container.appendChild(wrapper);
-    }
-
-
-    function openFolder(path) {
+      function openFolder(path) {
         currentPath = path;
         currentPage = 1;
         loadPage(1);
-    }
+      }
 
-    function navigateUp() {
+      function navigateUp() {
         if (!currentPath) return;
-        
+
         // Remove last segment
         // e.g., "folder1/subfolder" -> "folder1"
         // e.g., "folder1" -> ""
-        const parts = currentPath.split('/');
+        const parts = currentPath.split("/");
         parts.pop();
-        currentPath = parts.join('/');
-        
+        currentPath = parts.join("/");
+
         currentPage = 1;
         loadPage(1);
-    }
+      }
 
-    function loadPage(displayPageNumber) {
-      const zeroIndexedPage = displayPageNumber - 1;
-      
+      function loadPage(displayPageNumber) {
+        const zeroIndexedPage = displayPageNumber - 1;
 
-      const url = `/media-list?subdir=${encodeURIComponent(currentPath)}&offset=${zeroIndexedPage * pageSize}&limit=${pageSize}`;
-      
-      fetch(url)
-        .then(res => res.json())
-        .then(data => {
-          totalItems = data.total;
-          totalPages = Math.ceil(totalItems / pageSize);
-          currentPage = Math.max(1, Math.min(displayPageNumber, totalPages || 1));
-          
-          // Update UI info
-          pageInfo.textContent = `Page ${currentPage} of ${totalPages || 1}`;
-          
+        const url = `/media-list?subdir=${encodeURIComponent(currentPath)}&offset=${zeroIndexedPage * pageSize}&limit=${pageSize}`;
 
-          pathDisplay.textContent = currentPath ? `/${currentPath}` : "/ (Root)";
-          upBtn.disabled = !currentPath;
+        fetch(url)
+          .then((res) => res.json())
+          .then((data) => {
+            totalItems = data.total;
+            totalPages = Math.ceil(totalItems / pageSize);
+            currentPage = Math.max(
+              1,
+              Math.min(displayPageNumber, totalPages || 1),
+            );
 
-          clearContainer();
-          
+            // Update UI info
+            pageInfo.textContent = `Page ${currentPage} of ${totalPages || 1}`;
 
-          data.items.forEach(item => createGridItem(item));
-        })
-        .catch(err => console.error("Error loading page:", err));
-    }
+            pathDisplay.textContent = currentPath
+              ? `/${currentPath}`
+              : "/ (Root)";
+            upBtn.disabled = !currentPath;
 
-    function nextPage() {
-      if (currentPage < totalPages) loadPage(currentPage + 1);
-    }
+            clearContainer();
 
-    function prevPage() {
-      if (currentPage > 1) loadPage(currentPage - 1);
-    }
+            data.items.forEach((item) => createGridItem(item));
+          })
+          .catch((err) => console.error("Error loading page:", err));
+      }
 
-    function firstPage() {
-      loadPage(1);
-    }
+      function nextPage() {
+        if (currentPage < totalPages) loadPage(currentPage + 1);
+      }
 
-    function lastPage() {
-      loadPage(totalPages);
-    }
+      function prevPage() {
+        if (currentPage > 1) loadPage(currentPage - 1);
+      }
 
-    window.onload = () => {
-      loadPage(1);
-    };
-  </script>
-</body>
+      function firstPage() {
+        loadPage(1);
+      }
+
+      function lastPage() {
+        loadPage(totalPages);
+      }
+
+      window.onload = () => {
+        loadPage(1);
+      };
+    </script>
+  </body>
 </html>
