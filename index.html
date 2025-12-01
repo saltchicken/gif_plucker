@@ -58,6 +58,26 @@
     .gif-wrapper:hover .delete-icon {
       display: block;
     }
+
+
+    .save-icon {
+      position: absolute;
+      top: 5px;
+      left: 5px;
+      background: rgba(0, 0, 0, 0.5);
+      color: #4CAF50; /* Greenish */
+      font-size: 18px;
+      padding: 4px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: none;
+      user-select: none;
+      z-index: 10;
+    }
+    .gif-wrapper:hover .save-icon {
+      display: block;
+    }
+
     .file-label {
         position: absolute;
         bottom: 0;
@@ -238,6 +258,35 @@
             }
           };
           wrapper.appendChild(icon);
+
+
+          const saveIcon = document.createElement('div');
+          saveIcon.className = 'save-icon';
+          saveIcon.innerHTML = '💾';
+          saveIcon.title = 'Save to Saved folder';
+          saveIcon.onclick = (e) => {
+            e.stopPropagation();
+            // Simple visual feedback state
+            const originalText = saveIcon.innerHTML;
+            saveIcon.innerHTML = '⏳';
+            
+            fetch(`/save?filename=${encodeURIComponent(item.path)}`, { method: 'POST' })
+                .then(res => {
+                    if (res.ok) {
+                        saveIcon.innerHTML = '✅'; // Success checkmark
+                        setTimeout(() => saveIcon.innerHTML = '💾', 1500); // Reset after 1.5s
+                    } else {
+                        saveIcon.innerHTML = '❌';
+                        console.error('Save failed');
+                    }
+                })
+                .catch(err => {
+                    saveIcon.innerHTML = '❌';
+                    console.error(err);
+                });
+          };
+          wrapper.appendChild(saveIcon);
+
           observer.observe(wrapper);
       }
 
