@@ -129,7 +129,7 @@
     const container = document.getElementById('gif-container');
     const pageInfo = document.getElementById('page-info');
     
-    // ‼️ ADDED: Refs for navigation
+
     const pathDisplay = document.getElementById('current-path-display');
     const upBtn = document.getElementById('up-btn');
     
@@ -138,7 +138,7 @@
     let totalItems = 0;
     let totalPages = 1;
     
-    // ‼️ ADDED: State to track current subdirectory
+
     let currentPath = "";
 
     const observer = new IntersectionObserver((entries, obs) => {
@@ -156,7 +156,7 @@
       threshold: 0.1
     });
 
-    // ‼️ UPDATED: Removed getPageFromUrl logic that relied solely on page number, 
+
     // keeping it simple for now as folder navigation complicates permalinks.
     
     function toggleFullscreen(elem) {
@@ -171,12 +171,12 @@
       container.innerHTML = '';
     }
 
-    // ‼️ UPDATED: Renamed to generic "createGridItem" to handle both folders and files
+
     function createGridItem(item) {
       const wrapper = document.createElement('div');
       wrapper.className = 'gif-wrapper';
 
-      // ‼️ ADDED: Logic for Folder Items
+
       if (item.type === 'dir') {
           wrapper.classList.add('folder-type');
           
@@ -192,7 +192,7 @@
           wrapper.appendChild(folderContent);
           
       } else {
-          // ‼️ EXISTING: Logic for File Items (mp4/images)
+
           const file = item.path; // Use the path provided by API
           const ext = file.split('.').pop().toLowerCase();
           let media;
@@ -250,7 +250,7 @@
       container.appendChild(wrapper);
     }
 
-    // ‼️ ADDED: Navigation functions
+
     function openFolder(path) {
         currentPath = path;
         currentPage = 1;
@@ -274,7 +274,7 @@
     function loadPage(displayPageNumber) {
       const zeroIndexedPage = displayPageNumber - 1;
       
-      // ‼️ UPDATED: Pass 'subdir' to API
+
       const url = `/media-list?subdir=${encodeURIComponent(currentPath)}&offset=${zeroIndexedPage * pageSize}&limit=${pageSize}`;
       
       fetch(url)
@@ -287,13 +287,13 @@
           // Update UI info
           pageInfo.textContent = `Page ${currentPage} of ${totalPages || 1}`;
           
-          // ‼️ ADDED: Update path display
+
           pathDisplay.textContent = currentPath ? `/${currentPath}` : "/ (Root)";
           upBtn.disabled = !currentPath;
 
           clearContainer();
           
-          // ‼️ UPDATED: Handle mixed list of items
+
           data.items.forEach(item => createGridItem(item));
         })
         .catch(err => console.error("Error loading page:", err));
