@@ -15,6 +15,7 @@
       position: relative;
       display: inline-block;
       margin: 10px;
+      vertical-align: top; /* Ensures cleaner grid layout */
     }
     .gif-wrapper img,
     .gif-wrapper video {
@@ -38,6 +39,27 @@
     .gif-wrapper:hover .delete-icon {
       display: block;
     }
+    /* ‼️ ADDED: Label to show subdirectory/filename on hover for clarity */
+    .file-label {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(0,0,0,0.7);
+        color: #fff;
+        font-size: 12px;
+        padding: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        opacity: 0;
+        transition: opacity 0.2s;
+        pointer-events: none;
+    }
+    .gif-wrapper:hover .file-label {
+        opacity: 1;
+    }
+
     .controls {
       margin: 30px auto;
       text-align: center;
@@ -122,6 +144,7 @@
     const ext = file.split('.').pop().toLowerCase();
     let media;
 
+    // ‼️ NOTE: file variable now includes relative path (e.g. "subfolder/image.png")
     if (ext === 'mp4') {
       media = document.createElement('video');
       media.autoplay = true;
@@ -129,11 +152,11 @@
       media.loop = true;
       media.width = 400;
       media.dataset.src = `/media/${file}`;
-      media.poster = "placeholder.jpg";
+      media.poster = "placeholder.jpg"; // You might want a better placeholder strategy
     } else if (['png', 'gif', 'jpg', 'jpeg', 'webp'].includes(ext)) {
       media = document.createElement('img');
       media.dataset.src = `/media/${file}`;
-      media.src = "placeholder.jpg";
+      media.src = "placeholder.jpg"; // Placeholder
     } else {
       console.warn(`Unsupported file type: ${file}`);
       return;
@@ -152,7 +175,9 @@
       icon.onclick = (e) => {
         e.stopPropagation();
         if (confirm(`Delete "${file}"?`)) {
-          fetch(`/delete/${encodeURIComponent(file)}`, { method: 'DELETE' })
+          // ‼️ UPDATED: Changed from /delete/filename to /delete?filename=... 
+          // to safely handle subdirectories (slashes in paths)
+          fetch(`/delete?filename=${encodeURIComponent(file)}`, { method: 'DELETE' })
             .then(res => {
               if (res.ok) {
                 wrapper.remove();
@@ -163,8 +188,14 @@
         }
       };
 
+      // ‼️ ADDED: Label to show path
+      const label = document.createElement('div');
+      label.className = 'file-label';
+      label.textContent = file;
+
       wrapper.appendChild(media);
       wrapper.appendChild(icon);
+      wrapper.appendChild(label);
       container.appendChild(wrapper);
       observer.observe(wrapper);
     }
