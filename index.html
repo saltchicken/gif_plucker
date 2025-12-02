@@ -59,41 +59,43 @@
         display: block;
       }
 
-      .save-icon {
+      .action-bar-left {
         position: absolute;
         top: 5px;
         left: 5px;
+        display: flex;
+        gap: 5px; /* Space between buttons */
+        z-index: 10;
+      }
+
+      .action-btn {
         background: rgba(0, 0, 0, 0.5);
-        color: #4caf50; /* Greenish */
         font-size: 18px;
         padding: 4px;
         border-radius: 4px;
         cursor: pointer;
-        display: none;
+        display: none; /* Hidden by default */
         user-select: none;
-        z-index: 10;
+        width: 24px;
+        height: 24px;
+        text-align: center;
+        line-height: 24px;
       }
-      .gif-wrapper:hover .save-icon {
+
+      .gif-wrapper:hover .action-btn {
         display: block;
       }
 
+      .save-icon {
+        color: #4caf50; /* Greenish */
+      }
 
       .meta-icon {
-        position: absolute;
-        top: 5px;
-        left: 40px; /* Offset from save icon */
-        background: rgba(0, 0, 0, 0.5);
         color: #2196f3; /* Blueish */
-        font-size: 18px;
-        padding: 4px;
-        border-radius: 4px;
-        cursor: pointer;
-        display: none;
-        user-select: none;
-        z-index: 10;
       }
-      .gif-wrapper:hover .meta-icon {
-        display: block;
+
+      .prompt-icon {
+        color: #ff9800; /* Orangeish */
       }
 
       .file-label {
@@ -278,13 +280,16 @@
           };
           wrapper.appendChild(icon);
 
+          const actionBar = document.createElement("div");
+          actionBar.className = "action-bar-left";
+
+          // Save Icon
           const saveIcon = document.createElement("div");
-          saveIcon.className = "save-icon";
+          saveIcon.className = "action-btn save-icon";
           saveIcon.innerHTML = "💾";
           saveIcon.title = "Save to Saved folder";
           saveIcon.onclick = (e) => {
             e.stopPropagation();
-            // Simple visual feedback state
             const originalText = saveIcon.innerHTML;
             saveIcon.innerHTML = "⏳";
 
@@ -293,8 +298,8 @@
             })
               .then((res) => {
                 if (res.ok) {
-                  saveIcon.innerHTML = "✅"; // Success checkmark
-                  setTimeout(() => (saveIcon.innerHTML = "💾"), 1500); // Reset after 1.5s
+                  saveIcon.innerHTML = "✅";
+                  setTimeout(() => (saveIcon.innerHTML = "💾"), 1500);
                 } else {
                   saveIcon.innerHTML = "❌";
                   console.error("Save failed");
@@ -305,46 +310,31 @@
                 console.error(err);
               });
           };
-          wrapper.appendChild(saveIcon);
+          actionBar.appendChild(saveIcon);
 
-
+          // Metadata Icon (Copies Workflow if available, else Prompt)
           const metaIcon = document.createElement("div");
-          metaIcon.className = "meta-icon";
+          metaIcon.className = "action-btn meta-icon";
           metaIcon.innerHTML = "📋";
-          metaIcon.title = "Copy ComfyUI Metadata";
+          metaIcon.title = "Copy ComfyUI Workflow/Metadata";
           metaIcon.onclick = (e) => {
             e.stopPropagation();
-            const originalText = metaIcon.innerHTML;
-            metaIcon.innerHTML = "⏳";
-
-            fetch(`/metadata?filename=${encodeURIComponent(item.path)}`)
-              .then((res) => res.json())
-              .then((data) => {
-                if (data.metadata) {
-                  navigator.clipboard
-                    .writeText(data.metadata)
-                    .then(() => {
-                      metaIcon.innerHTML = "✅";
-                      setTimeout(() => (metaIcon.innerHTML = "📋"), 1500);
-                    })
-                    .catch((err) => {
-                      console.error("Clipboard error", err);
-                      metaIcon.innerHTML = "⚠️"; // Clipboard failed
-                    });
-                } else {
-                  // No metadata found
-                  console.warn(data.message);
-                  metaIcon.innerHTML = "🚫"; // Not found
-                  setTimeout(() => (metaIcon.innerHTML = "📋"), 1500);
-                }
-              })
-              .catch((err) => {
-                console.error("Meta fetch error", err);
-                metaIcon.innerHTML = "❌";
-              });
+            copyMetadata(item.path, null, metaIcon, "📋");
           };
-          wrapper.appendChild(metaIcon);
+          actionBar.appendChild(metaIcon);
 
+          const promptIcon = document.createElement("div");
+          promptIcon.className = "action-btn prompt-icon";
+          promptIcon.innerHTML = "📝";
+          promptIcon.title = "Copy positive prompt text";
+          promptIcon.onclick = (e) => {
+            e.stopPropagation();
+            // Call with special key 'prompt_text' to trigger server-side parsing
+            copyMetadata(item.path, "prompt_text", promptIcon, "📝");
+          };
+          actionBar.appendChild(promptIcon);
+
+          wrapper.appendChild(actionBar);
           observer.observe(wrapper);
         }
 
@@ -357,6 +347,47 @@
         container.appendChild(wrapper);
       }
 
+      function copyMetadata(filepath, key, iconElem, defaultIcon) {
+        iconElem.innerHTML = "⏳";
+
+        // Build URL
+        let url = `/metadata?filename=${encodeURIComponent(filepath)}`;
+        if (key) {
+          url += `&key=${key}`;
+        }
+
+        fetch(url)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.metadata) {
+              // Convert to string if it's an object
+              const textToCopy =
+                typeof data.metadata === "object"
+                  ? JSON.stringify(data.metadata, null, 2)
+                  : data.metadata;
+
+              navigator.clipboard
+                .writeText(textToCopy)
+                .then(() => {
+                  iconElem.innerHTML = "✅";
+                  setTimeout(() => (iconElem.innerHTML = defaultIcon), 1500);
+                })
+                .catch((err) => {
+                  console.error("Clipboard error", err);
+                  iconElem.innerHTML = "⚠️";
+                });
+            } else {
+              console.warn(data.message);
+              iconElem.innerHTML = "🚫";
+              setTimeout(() => (iconElem.innerHTML = defaultIcon), 1500);
+            }
+          })
+          .catch((err) => {
+            console.error("Meta fetch error", err);
+            iconElem.innerHTML = "❌";
+          });
+      }
+
       function openFolder(path) {
         currentPath = path;
         currentPage = 1;
@@ -365,10 +396,6 @@
 
       function navigateUp() {
         if (!currentPath) return;
-
-        // Remove last segment
-        // e.g., "folder1/subfolder" -> "folder1"
-        // e.g., "folder1" -> ""
         const parts = currentPath.split("/");
         parts.pop();
         currentPath = parts.join("/");
@@ -429,3 +456,4 @@
     </script>
   </body>
 </html>
+

@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import shutil
+import json
 from dotenv import load_dotenv, find_dotenv
 from PIL import Image
 
@@ -154,12 +155,12 @@ def save_file(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
 @app.get("/metadata")
 def get_metadata(
     filename: str = Query(
         ..., description="Relative path of file to get metadata from"
     ),
+    key: str = Query(None, description="Specific metadata key to fetch"),
 ):
     safe_path = os.path.normpath(os.path.join(MEDIA_FOLDER, filename))
 
@@ -173,9 +174,86 @@ def get_metadata(
         # Try to open with PIL
         with Image.open(safe_path) as img:
             info = img.info
-            # ComfyUI typically stores the workflow in 'workflow' or 'prompt'
-            # 'workflow' is the full graph (better for pasting)
-            # 'prompt' is the API payload
+
+
+            if key == "prompt_text":
+                if "prompt" not in info:
+                    return {"found": False, "message": "No prompt data found in image"}
+
+                try:
+                    # ComfyUI stores it as a JSON string inside the PNG info
+                    prompt_data = json.loads(info["prompt"])
+
+                    found_texts = []
+
+                    # 1. Find all KSampler nodes
+                    samplers = [
+                        (id, node)
+                        for id, node in prompt_data.items()
+                        if "Sampler" in node.get("class_type", "")
+                    ]
+
+                    for _, sampler in samplers:
+                        # 2. Find the 'positive' input (usually a link like ["42", 0])
+                        positive_link = sampler.get("inputs", {}).get("positive")
+
+                        if positive_link and isinstance(positive_link, list):
+                            from_node_id = positive_link[0]
+
+                            if from_node_id in prompt_data:
+                                source_node = prompt_data[from_node_id]
+
+                                # 3. Check if that node has a 'text' input that is a string
+                                # (Standard CLIPTextEncode / Prompt Manager behavior)
+                                text_val = source_node.get("inputs", {}).get("text")
+
+                                if isinstance(text_val, str) and text_val.strip():
+                                    found_texts.append(text_val)
+
+                    if found_texts:
+                        # Join unique texts (in case of multiple samplers using same prompt)
+                        return {"metadata": "\n\n".join(list(set(found_texts)))}
+                    else:
+                        # Fallback: Just look for any CLIPTextEncode that isn't negative
+                        # (Useful if the sampler logic fails due to complex routing)
+                        fallback_texts = []
+                        for _, node in prompt_data.items():
+                            if "CLIPTextEncode" in node.get("class_type", ""):
+                                # Skip if title says negative
+                                title = node.get("_meta", {}).get("title", "").lower()
+                                if "negative" in title:
+                                    continue
+
+                                text_val = node.get("inputs", {}).get("text")
+                                if isinstance(text_val, str) and len(text_val) > 5:
+                                    fallback_texts.append(text_val)
+
+                        if fallback_texts:
+                            return {"metadata": "\n\n".join(list(set(fallback_texts)))}
+
+                        return {
+                            "found": False,
+                            "message": "Could not identify prompt text in graph",
+                        }
+
+                except json.JSONDecodeError:
+                    return {"found": False, "message": "Prompt data was not valid JSON"}
+                except Exception as e:
+                    return {
+                        "found": False,
+                        "message": f"Error parsing prompt: {str(e)}",
+                    }
+
+
+            if key:
+                if key in info:
+                    return {"metadata": info[key]}
+                else:
+                    return {
+                        "found": False,
+                        "message": f"Metadata key '{key}' not found.",
+                    }
+
             if "workflow" in info:
                 return {"metadata": info["workflow"]}
             elif "prompt" in info:
@@ -183,5 +261,4 @@ def get_metadata(
             else:
                 return {"found": False, "message": "No ComfyUI metadata found"}
     except Exception as e:
-        # If not an image or other error
         return {"found": False, "message": f"Could not extract metadata: {str(e)}"}
