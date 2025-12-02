@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import shutil
 from dotenv import load_dotenv, find_dotenv
-from PIL import Image  # ‼️ Added PIL for metadata extraction
+from PIL import Image
 
 app = FastAPI()
 
@@ -154,7 +154,7 @@ def save_file(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ‼️ New endpoint to retrieve metadata
+
 @app.get("/metadata")
 def get_metadata(
     filename: str = Query(
