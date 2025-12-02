@@ -77,6 +77,25 @@
         display: block;
       }
 
+      /* ‼️ New Metadata Icon Styles */
+      .meta-icon {
+        position: absolute;
+        top: 5px;
+        left: 40px; /* Offset from save icon */
+        background: rgba(0, 0, 0, 0.5);
+        color: #2196f3; /* Blueish */
+        font-size: 18px;
+        padding: 4px;
+        border-radius: 4px;
+        cursor: pointer;
+        display: none;
+        user-select: none;
+        z-index: 10;
+      }
+      .gif-wrapper:hover .meta-icon {
+        display: block;
+      }
+
       .file-label {
         position: absolute;
         bottom: 0;
@@ -287,6 +306,44 @@
               });
           };
           wrapper.appendChild(saveIcon);
+
+          // ‼️ Metadata Icon Logic
+          const metaIcon = document.createElement("div");
+          metaIcon.className = "meta-icon";
+          metaIcon.innerHTML = "📋";
+          metaIcon.title = "Copy ComfyUI Metadata";
+          metaIcon.onclick = (e) => {
+            e.stopPropagation();
+            const originalText = metaIcon.innerHTML;
+            metaIcon.innerHTML = "⏳";
+
+            fetch(`/metadata?filename=${encodeURIComponent(item.path)}`)
+              .then((res) => res.json())
+              .then((data) => {
+                if (data.metadata) {
+                  navigator.clipboard
+                    .writeText(data.metadata)
+                    .then(() => {
+                      metaIcon.innerHTML = "✅";
+                      setTimeout(() => (metaIcon.innerHTML = "📋"), 1500);
+                    })
+                    .catch((err) => {
+                      console.error("Clipboard error", err);
+                      metaIcon.innerHTML = "⚠️"; // Clipboard failed
+                    });
+                } else {
+                  // No metadata found
+                  console.warn(data.message);
+                  metaIcon.innerHTML = "🚫"; // Not found
+                  setTimeout(() => (metaIcon.innerHTML = "📋"), 1500);
+                }
+              })
+              .catch((err) => {
+                console.error("Meta fetch error", err);
+                metaIcon.innerHTML = "❌";
+              });
+          };
+          wrapper.appendChild(metaIcon);
 
           observer.observe(wrapper);
         }

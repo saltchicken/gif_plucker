@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import shutil
 from dotenv import load_dotenv, find_dotenv
+from PIL import Image  # ‼️ Added PIL for metadata extraction
 
 app = FastAPI()
 
@@ -152,3 +153,35 @@ def save_file(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# ‼️ New endpoint to retrieve metadata
+@app.get("/metadata")
+def get_metadata(
+    filename: str = Query(
+        ..., description="Relative path of file to get metadata from"
+    ),
+):
+    safe_path = os.path.normpath(os.path.join(MEDIA_FOLDER, filename))
+
+    if not safe_path.startswith(os.path.abspath(MEDIA_FOLDER)):
+        raise HTTPException(status_code=400, detail="Invalid file path")
+
+    if not os.path.exists(safe_path):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    try:
+        # Try to open with PIL
+        with Image.open(safe_path) as img:
+            info = img.info
+            # ComfyUI typically stores the workflow in 'workflow' or 'prompt'
+            # 'workflow' is the full graph (better for pasting)
+            # 'prompt' is the API payload
+            if "workflow" in info:
+                return {"metadata": info["workflow"]}
+            elif "prompt" in info:
+                return {"metadata": info["prompt"]}
+            else:
+                return {"found": False, "message": "No ComfyUI metadata found"}
+    except Exception as e:
+        # If not an image or other error
+        return {"found": False, "message": f"Could not extract metadata: {str(e)}"}
